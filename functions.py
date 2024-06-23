@@ -3,16 +3,23 @@ import random
 import re
 
 def on_key_press(event, widget, original: str):
+    """
+    Parameters
+    -----
+    widget: user input tkinter Text widget
+
+    original: example string
+    """
     user_input = widget
     user_input.configure(state="normal")
 
-    # Automatic scrolling
+    # Automatic scrolling of user input text field
     user_input.yview_scroll(1, "units")
 
     letters = set("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
     numbers = set("0123456789")
 
-   
+   # Writing letters and numbers
     if event.keysym in letters or event.keysym in numbers:
         write_symbol(widget, event.keysym, original)
 
@@ -22,14 +29,21 @@ def on_key_press(event, widget, original: str):
     elif event.keysym == "BackSpace":
         last_position = user_input.index("end-2c")
         user_input.delete(last_position, "end-1c")
-
+    # Other keys
     else:
         handle_symbols(event, user_input, original)
 
     user_input.configure(state="disabled")
 
 
-def handle_symbols(event, user_input, original: str):
+def handle_symbols(event, widget, original: str):
+    """
+    Parameters
+    -----
+    widget: user input tkinter Text widget
+
+    original: example string
+    """
     if event.keysym == "backslash":
         symbol = "\\"
     elif event.keysym == "comma":
@@ -98,7 +112,7 @@ def handle_symbols(event, user_input, original: str):
     else:
         return
     
-    write_symbol(user_input, symbol, original)
+    write_symbol(widget, symbol, original)
 
 
 def count_words(input: str) -> int:
@@ -106,15 +120,30 @@ def count_words(input: str) -> int:
     return len(words)
 
 
-def get_random_sentences(file_path, number) -> str:
-    with open(file_path, "r", encoding="utf-8") as file:
-        text = file.read()
+def get_random_sentences(file_path: str, number: int) -> str|None:
+    """
+    Get random senteces from file.
+
+    Parameters
+    -----
+    number: number of sentences to be taken
+
+    Returns
+    -----
+    None if file could not be found
+    """
+    try:
+        with open(file_path, "r", encoding="utf-8") as file:
+            text = file.read()
+    except FileNotFoundError:
+        return None
     
     sentences = re.split(r"(?<!\w\.\w.)(?<![A-Z][a-z]\.)(?<=\.|\?)\s", text)
 
     if len(sentences) < number:
         raise ValueError("The text file does not contain enough sentences.")
     
+    # Choose random sentences
     selected_sentences = random.sample(sentences, number)
     
     result = ' '.join(selected_sentences)
@@ -123,6 +152,18 @@ def get_random_sentences(file_path, number) -> str:
 
 
 def write_symbol(widget, symbol: str, original: str):
+    """
+    Writes symbol to the user input tkinter Text widget.
+    Wrong symbols are written in red.
+
+    Parameters
+    -----
+    widget: user input tkinter Text widget
+
+    symbol: symbol that has to be written
+
+    original: exaple string
+    """
     user_input = widget
 
     # Adds new letter at the end
@@ -143,7 +184,7 @@ def write_symbol(widget, symbol: str, original: str):
         user_input.insert("end", symbol, "red")
         handle_typos("add")
     else:
-        # If the symbol is wrong
+        # Wrong symbol
         if symbol != original_words[len(words) - 1][last_word_len]:
             last_position = user_input.index("end-2c")
             user_input.delete(last_position, "end-1c")
@@ -151,12 +192,20 @@ def write_symbol(widget, symbol: str, original: str):
             handle_typos("add")
 
 
-def count_mistakes(widget) -> int:
+def count_mistakes(widget, original: str) -> int:
+    """
+    Parameters
+    -----
+    widget: user input tkinter Text widget
+
+    symbol: symbol that has to be written
+
+    original: exaple string
+    """
     user_input = widget
     # Get the ranges of text that have the "red" tag
     ranges = user_input.tag_ranges("red")
     
-    # Initialize the count
     count = 0
     
     # Iterate through the ranges and count the characters
@@ -165,12 +214,25 @@ def count_mistakes(widget) -> int:
         end = ranges[i + 1]
         count += len(user_input.get(start, end))
 
+    # Forgotten symbols
+    words = user_input.get("1.0", "end-1c").split()
+    original_words = original.split()
+    # User word is shorter than the original => user forgot some
+    for i, word in enumerate(words):
+        if len(word) < len(original_words[i]):
+            count = count + len(original_words[i]) - len(word)
+
     return count
 
-
+# Global typos count
 typos = 0
 
-def handle_typos(operation: str) -> None|int:
+def handle_typos(operation: str) -> int:
+    """
+    Parameters
+    ----
+    operation: 'add' / 'get'
+    """
     global typos
     if operation == "add":
         typos += 1
